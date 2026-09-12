@@ -63,6 +63,12 @@
 
 注意：杀毒软件可能会误报 AHK 编译的程序，这是常见现象。
 
+## 🙏 第三方资源与致谢
+
+- GitHub Hosts 数据来源：[HelloGitHub](https://raw.hellogithub.com/hosts)
+- 备用镜像参考：[GitHub520](https://github.com/521xueweihan/GitHub520)
+- 第三方 hosts 内容由其原作者维护，本项目仅调用下载，不对其内容负责。
+
 ## ⚠️ 免责声明
 
 - 本脚本仅供个人学习与交流使用
