@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 #SingleInstance Force
 
 ; ============================================================
@@ -27,7 +27,6 @@
 ;  ⚠️ 重要：脚本运行原神时会自动关闭 Snipaste。
 ;     如果你的电脑上还有其他会占用 F 键或截图快捷键的软件，
 ;     也建议在脚本运行期间手动关闭，避免冲突。
-;     如需修改，请编辑下方 “需要关闭的软件” 区域。
 ;
 ; ============================================================
 
@@ -116,10 +115,15 @@ games := [
 ]
 
 ; ---------- GitHub Hosts 自动更新（默认关闭，有风险，请自行决定是否开启） ----------
+; 数据来源：
+;   主源：HelloGitHub 提供的 hosts（https://raw.hellogithub.com/hosts）
+;   备用：GitHub520 项目（https://github.com/521xueweihan/GitHub520）
+; 说明：hosts 内容由第三方维护，本项目仅调用下载，不对其内容负责。
+;       如不需要，可将 enableAutoUpdateHosts 设为 false。
 hostsUrl := "https://raw.hellogithub.com/hosts"
-hostsFilePath := A_WinDir "\System32\drivers\etc\hosts"
-hostsBackupPath := A_WinDir "\System32\drivers\etc\hosts.bak"
-hostsTempPath := A_Temp "\hellogithub_hosts_new.txt"
+hostsFilePath := A_WinDir . "\System32\drivers\etc\hosts"
+hostsBackupPath := A_WinDir . "\System32\drivers\etc\hosts.bak"
+hostsTempPath := A_Temp . "\hellogithub_hosts_new.txt"
 hostsUpdateMinSize := 100
 enableAutoUpdateHosts := false      ; ← 改为 true 可开启
 autoUpdateOnStartup := false
@@ -166,16 +170,16 @@ F8::HandleF8()
 ;  游戏内热键映射
 ; ============================================================
 #HotIf WinActive("原神")
-XButton1::e
-XButton2::t
+XButton1::Send "e"
+XButton2::Send "t"
 
 #HotIf WinActive("崩坏：星穹铁道")
-XButton1::e
-XButton2::r
+XButton1::Send "e"
+XButton2::Send "r"
 
 #HotIf WinActive("绝区零")
-XButton1::e
-XButton2::r
+XButton1::Send "e"
+XButton2::Send "r"
 
 #HotIf
 
@@ -190,11 +194,11 @@ FindLauncherIcoDir() {
     bestVersion := ""
     bestPath := ""
 
-    Loop Files, launcherRootPath "\*", "D" {
+    Loop Files, launcherRootPath . "\*", "D" {
         versionName := A_LoopFileName
         if !RegExMatch(versionName, "^\d+(\.\d+)+$")
             continue
-        icoDir := A_LoopFileFullPath "\ico"
+        icoDir := A_LoopFileFullPath . "\ico"
         if !DirExist(icoDir)
             continue
         if (bestVersion = "" || CompareVersion(versionName, bestVersion) > 0) {
@@ -226,7 +230,7 @@ ResolveIconPath(game) {
     if (game.HasProp("iconFile") && game.iconFile != "") {
         icoDir := FindLauncherIcoDir()
         if (icoDir != "") {
-            candidate := icoDir "\" game.iconFile
+            candidate := icoDir . "\" . game.iconFile
             if FileExist(candidate)
                 return candidate
         }
@@ -245,7 +249,7 @@ PrepareImage(srcPath, dstPath, w, h) {
         }
     }
     pid := DllCall("GetCurrentProcessId")
-    psFile := A_Temp "\ahk_prep_" pid ".ps1"
+    psFile := A_Temp . "\ahk_prep_" . pid . ".ps1"
     try FileDelete(psFile)
 
     psScript :=
@@ -262,7 +266,7 @@ PrepareImage(srcPath, dstPath, w, h) {
         "`$g.Dispose(); `$dst.Dispose(); `$srcBmp.Dispose(); `$icon.Dispose()"
     )
     FileAppend(psScript, psFile, "UTF-8")
-    exitCode := RunWait('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' psFile '"', , "Hide")
+    exitCode := RunWait('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' . psFile . '"', , "Hide")
     try FileDelete(psFile)
     return (exitCode = 0 && FileExist(dstPath))
 }
@@ -272,7 +276,7 @@ PrepareImage(srcPath, dstPath, w, h) {
 ; ============================================================
 LogLine(text) {
     global runReport
-    runReport .= text "`n"
+    runReport .= text . "`n"
 }
 
 FormatTimeMS(ms) {
@@ -325,7 +329,7 @@ RestoreSnipaste() {
     global snipasteWasRunning, snipastePath
     if snipasteWasRunning {
         if !ProcessExist("snipaste.exe")
-            try Run('"' snipastePath '"')
+            try Run('"' . snipastePath . '"')
         snipasteWasRunning := false
     }
 }
@@ -398,22 +402,22 @@ UpdateHosts(showResult := true) {
         if FileExist(hostsTempPath)
             FileDelete(hostsTempPath)
 
-        curlPath := A_WinDir "\System32\curl.exe"
+        curlPath := A_WinDir . "\System32\curl.exe"
         if !FileExist(curlPath)
             throw Error("未找到 curl.exe")
 
         opts := "--ssl-no-revoke -s --connect-timeout 15 --max-time 60 --retry 3 --retry-delay 2"
-        curlCmd := '"' curlPath '" -L ' opts ' -o "' hostsTempPath '" "' hostsUrl '"'
+        curlCmd := '"' . curlPath . '" -L ' . opts . ' -o "' . hostsTempPath . '" "' . hostsUrl . '"'
         exitCode := RunWait(curlCmd, , "Hide")
 
         if (exitCode != 0) {
-            mirrorUrl := "https://raw.fastgit.org/521xueweihan/GitHub520/main/hosts"
-            curlCmd := '"' curlPath '" -L ' opts ' -o "' hostsTempPath '" "' mirrorUrl '"'
+            mirrorUrl := "https://raw.githubusercontent.com/521xueweihan/GitHub520/main/hosts"
+            curlCmd := '"' . curlPath . '" -L ' . opts . ' -o "' . hostsTempPath . '" "' . mirrorUrl . '"'
             exitCode := RunWait(curlCmd, , "Hide")
         }
 
         if (exitCode != 0)
-            throw Error("curl 下载失败，退出码: " exitCode)
+            throw Error("curl 下载失败，退出码: " . exitCode)
         if !FileExist(hostsTempPath)
             throw Error("下载文件不存在")
         if FileGetSize(hostsTempPath) < hostsUpdateMinSize
@@ -432,14 +436,14 @@ UpdateHosts(showResult := true) {
         success := true
         message := "✅ GitHub Hosts 已更新"
     } catch as err {
-        message := "❌ GitHub Hosts 更新失败: " err.Message
+        message := "❌ GitHub Hosts 更新失败: " . err.Message
     }
 
     hostsUpdateRunning := false
 
     if showResult {
         if success
-            ShowToolTip(message "`n备份: " hostsBackupPath, 3000)
+            ShowToolTip(message . "`n备份: " . hostsBackupPath, 3000)
         else
             MsgBox(message, "Hosts 更新", "Icon! T5")
     } else {
@@ -478,23 +482,23 @@ StartProcess() {
         iconPath := ResolveIconPath(game)
 
         ok := false
-        cachePath := A_Temp "\AHK_Card_" index "_" cardW "x" cardH ".png"
+        cachePath := A_Temp . "\AHK_Card_" . index . "_" . cardW . "x" . cardH . ".png"
         if (iconPath != "" && FileExist(iconPath))
             ok := PrepareImage(iconPath, cachePath, cardW, cardH)
 
         if ok
-            cardPic := selectGui.Add("Picture", "x" cardX " y" startY " w" cardW " h" cardH " +0x100", cachePath)
+            cardPic := selectGui.Add("Picture", "x" . cardX . " y" . startY . " w" . cardW . " h" . cardH . " +0x100", cachePath)
         else
-            cardPic := selectGui.Add("Text", "x" cardX " y" startY " w" cardW " h" cardH " +0x100 +0x200 Center Border", game.name)
+            cardPic := selectGui.Add("Text", "x" . cardX . " y" . startY . " w" . cardW . " h" . cardH . " +0x100 +0x200 Center Border", game.name)
 
-        barGreen := selectGui.Add("Text", "x" cardX " y" (startY + cardH + 10) " w" cardW " h4 Background0x4CAF50", "")
-        barGray := selectGui.Add("Text", "x" cardX " y" (startY + cardH + 10) " w" cardW " h4 Background0xC8C8C8", "")
+        barGreen := selectGui.Add("Text", "x" . cardX . " y" . (startY + cardH + 10) . " w" . cardW . " h4 Background0x4CAF50", "")
+        barGray := selectGui.Add("Text", "x" . cardX . " y" . (startY + cardH + 10) . " w" . cardW . " h4 Background0xC8C8C8", "")
         barGray.Visible := false
 
         selectGui.SetFont("s10 Bold", "Microsoft YaHei")
-        nameGreen := selectGui.Add("Text", "x" cardX " y" (startY + cardH + 20) " w" cardW " Center cGreen", game.name)
+        nameGreen := selectGui.Add("Text", "x" . cardX . " y" . (startY + cardH + 20) . " w" . cardW . " Center cGreen", game.name)
         selectGui.SetFont("s10", "Microsoft YaHei")
-        nameGray := selectGui.Add("Text", "x" cardX " y" (startY + cardH + 20) " w" cardW " Center cGray", game.name)
+        nameGray := selectGui.Add("Text", "x" . cardX . " y" . (startY + cardH + 20) . " w" . cardW . " Center cGray", game.name)
         nameGray.Visible := false
 
         controls := { barGreen: barGreen, barGray: barGray, nameGreen: nameGreen, nameGray: nameGray }
@@ -507,14 +511,14 @@ StartProcess() {
     btnTotalWidth := btnW * 2 + btnGap
     btnX := (totalWidth - btnTotalWidth) // 2
 
-    btnOK := selectGui.Add("Button", "x" btnX " y" btnY " w" btnW " h38 Default", "开始执行（回车）")
-    btnCancel := selectGui.Add("Button", "x" (btnX + btnW + btnGap) " y" btnY " w" btnW " h38", "取消（Esc）")
+    btnOK := selectGui.Add("Button", "x" . btnX . " y" . btnY . " w" . btnW . " h38 Default", "开始执行（回车）")
+    btnCancel := selectGui.Add("Button", "x" . (btnX + btnW + btnGap) . " y" . btnY . " w" . btnW . " h38", "取消（Esc）")
     btnOK.OnEvent("Click", OnSelectOK.Bind(selectGui))
     btnCancel.OnEvent("Click", OnSelectCancel.Bind(selectGui))
     selectGui.OnEvent("Escape", OnSelectCancel.Bind(selectGui))
 
     selectGui.Show("AutoSize Center")
-    WinWaitClose("ahk_id " selectGui.Hwnd)
+    WinWaitClose("ahk_id " . selectGui.Hwnd)
 
     if selectedFlags = ""
         return
@@ -529,7 +533,7 @@ StartProcess() {
 
     scriptStartTime := A_TickCount
     runReport := "====== 自动化运行日志 ======`n"
-    runReport .= "开始时间: " A_YYYY "-" A_MM "-" A_DD " " A_Hour ":" A_Min ":" A_Sec "`n------------------------------`n"
+    runReport .= "开始时间: " . A_YYYY . "-" . A_MM . "-" . A_DD . " " . A_Hour . ":" . A_Min . ":" . A_Sec . "`n------------------------------`n"
 
     ; ---------- 主循环 ----------
     Loop games.Length {
@@ -539,8 +543,8 @@ StartProcess() {
             if !ProcessGame(game) || abortAll
                 break
         } else {
-            LogLine("⏭️ [" game.name "] 状态: 已跳过")
-            ShowToolTip("跳过 " game.name, 2000)
+            LogLine("⏭️ [" . game.name . "] 状态: 已跳过")
+            ShowToolTip("跳过 " . game.name, 2000)
         }
         Sleep 2000
     }
@@ -554,7 +558,7 @@ StartProcess() {
         LogLine("⚠️ 流程状态: 存在异常")
     else
         LogLine("✅ 流程状态: 正常结束")
-    LogLine("⏱️ 脚本总运行时长: " totalDuration)
+    LogLine("⏱️ 脚本总运行时长: " . totalDuration)
     LogLine("==========================")
 
     isRunning := false
@@ -604,7 +608,7 @@ CleanupAllGames() {
             try
                 ProcessClose(toolExe)
             catch
-                try RunWait("taskkill /f /im " toolExe, , "Hide")
+                try RunWait("taskkill /f /im " . toolExe, , "Hide")
         }
     }
 }
@@ -625,7 +629,7 @@ ProcessGame(game) {
     } catch as err {
         if game.name = "原神"
             RestoreSnipaste()
-        LogLine("❌ [" game.name "] 致命错误 | 环节: 启动辅助工具 | 原因: " err.Message)
+        LogLine("❌ [" . game.name . "] 致命错误 | 环节: 启动辅助工具 | 原因: " . err.Message)
         hasAbnormal := true
         return true
     }
@@ -636,14 +640,14 @@ ProcessGame(game) {
         if game.name = "原神"
             RestoreSnipaste()
         try ProcessClose(RegExReplace(game.toolPath, ".*\\"))
-        LogLine("❌ [" game.name "] 异常结束 | 环节: 等待工具窗口 | 原因: 未找到窗口")
+        LogLine("❌ [" . game.name . "] 异常结束 | 环节: 等待工具窗口 | 原因: 未找到窗口")
         hasAbnormal := true
         return true
     }
 
     ; ---------- 3. 点击前等待 ----------
     if game.HasProp("preClickWait") and game.preClickWait > 0 {
-        ShowToolTip(game.name " 工具已加载，等待 " (game.preClickWait/1000) " 秒后点击...", game.preClickWait)
+        ShowToolTip(game.name . " 工具已加载，等待 " . (game.preClickWait/1000) . " 秒后点击...", game.preClickWait)
         loop game.preClickWait // 1000 {
             if cancelRequested or abortAll {
                 CleanupGame(game, toolHwnd)
@@ -660,7 +664,7 @@ ProcessGame(game) {
             if coords.Length = 2 {
                 WinActivate(toolHwnd)
                 WinWaitActive(toolHwnd, , 2)
-                Click Integer(coords[1]), Integer(coords[2])
+                Click(Integer(coords[1]), Integer(coords[2]))
             }
         }
         Sleep 500
@@ -668,7 +672,7 @@ ProcessGame(game) {
 
     ; ---------- 5. 点击后等待 ----------
     if game.HasProp("postClickWait") and game.postClickWait > 0 {
-        ShowToolTip(game.name " 点击完成，等待 " (game.postClickWait/1000) " 秒加载...", game.postClickWait)
+        ShowToolTip(game.name . " 点击完成，等待 " . (game.postClickWait/1000) . " 秒加载...", game.postClickWait)
         loop game.postClickWait // 1000 {
             if cancelRequested or abortAll {
                 CleanupGame(game, toolHwnd)
@@ -679,13 +683,13 @@ ProcessGame(game) {
     }
 
     ; ---------- 6. 等待游戏窗口 ----------
-    ShowToolTip("等待 " game.name " 游戏窗口出现 (限时 10 秒)...", 0)
+    ShowToolTip("等待 " . game.name . " 游戏窗口出现 (限时 10 秒)...", 0)
     gameHwnd := WaitWindow(game.gameTitle, 10)
     if !gameHwnd {
         if game.name = "原神"
             RestoreSnipaste()
         SafeCloseTool(toolHwnd, game.toolPath)
-        LogLine("⚠️ [" game.name "] 异常结束 | 环节: 等待游戏窗口 | 原因: 10 秒内游戏未响应")
+        LogLine("⚠️ [" . game.name . "] 异常结束 | 环节: 等待游戏窗口 | 原因: 10 秒内游戏未响应")
         hasAbnormal := true
         return true
     }
@@ -697,9 +701,9 @@ ProcessGame(game) {
     warnEmailSent := false
     timeoutNotified := false
     isMonday := (A_WDay = 2)   ; 1=周日, 2=周一, ..., 7=周六
-    ShowToolTip("正在运行 " game.name "，监控中...", 0)
+    ShowToolTip("正在运行 " . game.name . "，监控中...", 0)
 
-    while WinExist("ahk_id " gameHwnd) {
+    while WinExist("ahk_id " . gameHwnd) {
         if cancelRequested or abortAll {
             CleanupGame(game, toolHwnd)
             return false
@@ -710,9 +714,9 @@ ProcessGame(game) {
         ; ---- 2 小时预警邮件（不打断） ----
         if (!warnEmailSent && elapsed > warnMs) {
             warnEmailSent := true
-            LogLine("⏰ [" game.name "] 已运行超过 " warnAfterHours " 小时，发送预警邮件")
+            LogLine("⏰ [" . game.name . "] 已运行超过 " . warnAfterHours . " 小时，发送预警邮件")
             SendWarningEmail(game.name, warnAfterHours)
-            ShowToolTip(game.name " 已运行超过 " warnAfterHours " 小时，已发提醒", 5000)
+            ShowToolTip(game.name . " 已运行超过 " . warnAfterHours . " 小时，已发提醒", 5000)
         }
 
         ; ---- 3 小时超时动作 ----
@@ -720,14 +724,14 @@ ProcessGame(game) {
             if isMonday {
                 if !timeoutNotified {
                     timeoutNotified := true
-                    LogLine("⚠️ [" game.name "] 已运行超过 " game.timeoutHours " 小时，今天周一继续挂机（不关闭）")
-                    ShowToolTip(game.name " 超 " game.timeoutHours " 小时，周一继续", 5000)
+                    LogLine("⚠️ [" . game.name . "] 已运行超过 " . game.timeoutHours . " 小时，今天周一继续挂机（不关闭）")
+                    ShowToolTip(game.name . " 超 " . game.timeoutHours . " 小时，周一继续", 5000)
                 }
             } else {
                 hasAbnormal := true
                 gameDurationStr := FormatTimeMS(elapsed)
-                LogLine("❌ [" game.name "] 已运行超过 " game.timeoutHours " 小时，非周一强制关闭 | 已运行: " gameDurationStr)
-                ShowToolTip(game.name " 超时，强制关闭", 3000)
+                LogLine("❌ [" . game.name . "] 已运行超过 " . game.timeoutHours . " 小时，非周一强制关闭 | 已运行: " . gameDurationStr)
+                ShowToolTip(game.name . " 超时，强制关闭", 3000)
                 CleanupGame(game, toolHwnd)
                 if game.name = "原神"
                     RestoreSnipaste()
@@ -742,10 +746,10 @@ ProcessGame(game) {
     gameDurationStr := FormatTimeMS(gameDurationMs)
 
     if (gameDurationMs < minRuntimeSeconds * 1000) {
-        LogLine("❌ [" game.name "] 流程过短 | 仅运行 " gameDurationStr "（< " minRuntimeSeconds " 秒，疑似启动失败或崩溃）")
+        LogLine("❌ [" . game.name . "] 流程过短 | 仅运行 " . gameDurationStr . "（< " . minRuntimeSeconds . " 秒，疑似启动失败或崩溃）")
         hasAbnormal := true
     } else {
-        LogLine("▶️ [" game.name "] 正常挂机完毕 | 耗时: " gameDurationStr)
+        LogLine("▶️ [" . game.name . "] 正常挂机完毕 | 耗时: " . gameDurationStr)
     }
 
     ; ---------- 9. 收尾 ----------
@@ -754,11 +758,11 @@ ProcessGame(game) {
             CleanupGame(game, toolHwnd)
             return false
         }
-        ShowToolTip(game.name " 游戏已关闭，等待 " (10 - A_Index + 1) " 秒后关闭工具...", 1000)
+        ShowToolTip(game.name . " 游戏已关闭，等待 " . (10 - A_Index + 1) . " 秒后关闭工具...", 1000)
         Sleep 1000
     }
 
-    ShowToolTip("正在关闭 " game.name " 工具...", 2000)
+    ShowToolTip("正在关闭 " . game.name . " 工具...", 2000)
     SafeCloseTool(toolHwnd, game.toolPath)
 
     if game.name = "原神"
@@ -773,14 +777,14 @@ SafeCloseTool(toolHwnd, toolPath) {
         return
     toolExe := RegExReplace(toolPath, ".*\\")
 
-    if WinExist("ahk_id " toolHwnd) {
+    if WinExist("ahk_id " . toolHwnd) {
         WinClose(toolHwnd)
         loop 3 {
-            if !WinExist("ahk_id " toolHwnd)
+            if !WinExist("ahk_id " . toolHwnd)
                 break
             Sleep 1000
         }
-        if WinExist("ahk_id " toolHwnd) {
+        if WinExist("ahk_id " . toolHwnd) {
             WinKill(toolHwnd)
             Sleep 500
         }
@@ -821,13 +825,13 @@ BuildCDO() {
 
     schemas := "http://schemas.microsoft.com/cdo/configuration/"
     fields := cdo.Configuration.Fields
-    fields.Item[schemas "sendusing"] := 2
-    fields.Item[schemas "smtpserver"] := smtpServer
-    fields.Item[schemas "smtpserverport"] := smtpPort
-    fields.Item[schemas "smtpauthenticate"] := 1
-    fields.Item[schemas "sendusername"] := senderEmail
-    fields.Item[schemas "sendpassword"] := senderPass
-    fields.Item[schemas "smtpusessl"] := true
+    fields.Item[schemas . "sendusing"] := 2
+    fields.Item[schemas . "smtpserver"] := smtpServer
+    fields.Item[schemas . "smtpserverport"] := smtpPort
+    fields.Item[schemas . "smtpauthenticate"] := 1
+    fields.Item[schemas . "sendusername"] := senderEmail
+    fields.Item[schemas . "sendpassword"] := senderPass
+    fields.Item[schemas . "smtpusessl"] := true
     fields.Update()
     return cdo
 }
@@ -849,7 +853,7 @@ SendEmailReport(reportContent) {
         cdo.Send()
         ShowToolTip("✅ 邮件通知已成功推送！", 3000)
     } catch as err {
-        ShowToolTip("❌ 邮件发送异常: " err.Message, 5000)
+        ShowToolTip("❌ 邮件发送异常: " . err.Message, 5000)
     }
 }
 
@@ -862,12 +866,12 @@ SendWarningEmail(gameName, hours) {
 
     try {
         cdo := BuildCDO()
-        cdo.Subject := "【AutoHotkey】挂机超时预警 - " gameName
-        cdo.TextBody := "游戏 [" gameName "] 已运行超过 " hours " 小时，请留意是否卡住。`n`n"
-                      . "当前时间: " A_YYYY "-" A_MM "-" A_DD " " A_Hour ":" A_Min ":" A_Sec "`n"
+        cdo.Subject := "【AutoHotkey】挂机超时预警 - " . gameName
+        cdo.TextBody := "游戏 [" . gameName . "] 已运行超过 " . hours . " 小时，请留意是否卡住。`n`n"
+                      . "当前时间: " . A_YYYY . "-" . A_MM . "-" . A_DD . " " . A_Hour . ":" . A_Min . ":" . A_Sec . "`n"
                       . "周一：超 3 小时会继续挂机；其他日期：超 3 小时将强制关闭进入下一个流程。"
         cdo.Send()
     } catch as err {
-        LogLine("⚠️ 预警邮件发送失败: " err.Message)
+        LogLine("⚠️ 预警邮件发送失败: " . err.Message)
     }
 }
